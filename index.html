@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>皮克敏座標系統 V32 (深色毛玻璃協作版)</title>
+    <title>強開團座標分配工具</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
         :root {
-            --primary: #4ade80; /* 螢光綠主色 */
+            --primary: #4ade80; 
             --primary-hover: #22c55e;
-            --accent: #60a5fa; /* 亮藍色 */
+            --accent: #60a5fa; 
             --danger: #f87171;
             --warning: #fbbf24;
             --custom: #c084fc;
@@ -34,7 +34,6 @@
         
         h2 { text-align: center; margin: 0 0 20px 0; color: var(--primary); letter-spacing: 2px; text-shadow: 0 0 10px rgba(74, 222, 128, 0.3); }
 
-        /* 毛玻璃面板共用樣式 */
         .glass-panel {
             background: var(--glass-bg);
             backdrop-filter: blur(12px);
@@ -45,7 +44,6 @@
             padding: 20px;
         }
 
-        /* 網格排版：左欄(控制台) + 右欄(表格) */
         .layout-grid {
             display: grid;
             grid-template-columns: 360px 1fr;
@@ -54,39 +52,24 @@
             align-items: start;
         }
 
-        /* 左側控制台區塊間距 */
         .admin-group { margin-bottom: 20px; }
         .admin-group:last-child { margin-bottom: 0; }
 
         label { font-size: 14px; font-weight: 600; color: var(--accent); display: block; margin-bottom: 8px; letter-spacing: 0.5px;}
         
-        /* 質感輸入框 */
         select, textarea, input[type="text"], input[type="password"] { 
-            width: 100%; 
-            padding: 12px; 
-            border-radius: 8px; 
-            border: 1px solid var(--glass-border); 
-            background: rgba(0, 0, 0, 0.3);
-            color: var(--text-main);
-            font-size: 14px; 
-            box-sizing: border-box; 
-            outline: none;
+            width: 100%; padding: 12px; border-radius: 8px; 
+            border: 1px solid var(--glass-border); background: rgba(0, 0, 0, 0.3);
+            color: var(--text-main); font-size: 14px; box-sizing: border-box; outline: none;
             transition: border-color 0.3s, box-shadow 0.3s;
         }
-        select:focus, textarea:focus, input:focus {
-            border-color: var(--primary);
-            box-shadow: 0 0 8px rgba(74, 222, 128, 0.2);
-        }
-        select option { background: #1e1e2f; color: #fff; } /* 修正下拉選單在深色模式的背景 */
+        select:focus, textarea:focus, input:focus { border-color: var(--primary); box-shadow: 0 0 8px rgba(74, 222, 128, 0.2); }
+        select option { background: #1e1e2f; color: #fff; } 
         
         textarea { min-height: 100px; resize: none; margin-bottom: 5px; font-family: monospace; overflow: hidden; }
 
-        /* 按鈕樣式 */
         .btn-group { display: flex; flex-wrap: wrap; gap: 10px; margin-top:10px; }
-        button { 
-            border: none; border-radius: 8px; cursor: pointer; font-weight: bold; 
-            padding: 12px; transition: all 0.2s ease; 
-        }
+        button { border: none; border-radius: 8px; cursor: pointer; font-weight: bold; padding: 12px; transition: all 0.2s ease; }
         button:disabled { opacity: 0.4; cursor: not-allowed; }
         button:not(:disabled):hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.3); filter: brightness(1.1); }
         
@@ -102,7 +85,6 @@
         }
         .save-options label { color: var(--text-muted); font-size: 13px; margin-bottom: 6px; font-weight: normal; cursor: pointer;}
         
-        /* 表格樣式 (無高度限制) */
         .table-container { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; min-width: 650px; }
         th { background: rgba(255, 255, 255, 0.05); color: var(--primary); padding: 14px 10px; text-align: left; border-bottom: 2px solid var(--glass-border); }
@@ -112,32 +94,34 @@
         .check-col, .no-col { width: 40px; text-align: center; }
         .member-col { white-space: nowrap; width: 1%; min-width: 130px; }
         .assigned-name { font-weight: bold; color: #000; padding: 4px 14px; border-radius: 6px; font-size: 13px; display:inline-block; }
-        .copy-btn { background: rgba(255,255,255,0.1); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 12px; border: 1px solid var(--glass-border); }
         
-        /* 協作模式專屬 UI */
-        #collabHeader { display: none; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--warning); }
-        .history-box { font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; height: 60px; overflow-y: auto; text-align: left; margin-top: 10px; border: 1px solid var(--glass-border); }
-        .locked-overlay { opacity: 0.5; pointer-events: none; }
-        .row-disabled td { opacity: 0.4; }
+        /* 複製按鈕樣式 */
+        .copy-btn { background: rgba(255,255,255,0.1); color: var(--text-main); padding: 6px 12px; border-radius: 6px; font-size: 12px; border: 1px solid var(--glass-border); }
+        .copy-btn.copied { background: var(--primary); color: #000; border-color: var(--primary); }
 
-        /* 地圖樣式 */
+        #collabHeader { display: none; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--warning); text-align: center; }
+        .history-box { font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; height: 60px; overflow-y: auto; text-align: left; margin-top: 10px; border: 1px solid var(--glass-border); }
+        
         #map { height: 500px; width: 100%; border-radius: 12px; z-index: 1; margin-top: 10px;}
         .map-number-icon { color: #000; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; font-size: 12px; font-weight: bold; box-shadow: 0 0 10px rgba(255,255,255,0.3); border: 2px solid rgba(255,255,255,0.8); }
 
-        /* 響應式：手機版變為垂直堆疊 */
+        /* 手機版響應式滿版 */
         @media (max-width: 950px) { 
             .layout-grid { grid-template-columns: 1fr; } 
             .table-container { margin-top: 0; }
+            /* 確保表單寬度佔滿 */
+            #section2, textarea { width: 100%; max-width: 100%; }
         }
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>皮克敏座標系統 V32</h2>
+    <h2>強開團座標分配工具</h2>
     
     <!-- 協作模式專用頂部 -->
-    <div id="collabHeader" class="glass-panel" style="margin-bottom: 20px; text-align: center;">
-        <h3 style="margin:0 0 10px 0; color:var(--warning);">🔗 專注任務模式 (代碼：<span id="displayCode"></span>)</h3>
+    <div id="collabHeader" class="glass-panel" style="margin-bottom: 20px;">
+        <h3 style="margin:0 0 5px 0; color:var(--warning);">🔗 共享任務模式 (代碼：<span id="displayCode"></span>)</h3>
+        <div id="expireTimeDisplay" style="font-size: 13px; color: var(--danger); margin-bottom: 12px;"></div>
         <div id="collabActions">
             <button id="btnUnlock" onclick="unlockTask()" class="btn-danger" style="width: auto; padding: 10px 25px; margin-top:0;">🔒 輸入密碼解鎖編輯</button>
             <button id="btnSaveSync" onclick="saveSharedTask()" style="display:none; background:var(--primary); color:#000; padding:10px 25px;">💾 儲存變更並同步</button>
@@ -147,10 +131,7 @@
 
     <!-- 左右雙欄網格 -->
     <div class="layout-grid">
-        
-        <!-- 左欄：控制台 -->
         <div class="left-panel">
-            <!-- 區塊 1：選擇花田 -->
             <div class="glass-panel admin-group" id="section1">
                 <label id="dbStatusLabel">📍 1. 選擇花田 (連線中...)</label>
                 <select id="fieldSelector" onchange="resetAndRender()"></select>
@@ -160,19 +141,17 @@
                 </div>
             </div>
 
-            <!-- 區塊 2：分配名單 -->
             <div class="glass-panel admin-group" id="section2">
                 <label>👥 2. 分配名單 (數量 名稱)</label>
                 <textarea id="batchMemberInput" placeholder="5 小明&#10;10 阿華" oninput="updateStats()"></textarea>
                 <div id="statsDisplay" style="font-size:13px; margin-top:5px; color:var(--text-muted);">需求: 0 | 可用: 0</div>
                 <div class="btn-group">
                     <button class="btn-assign" id="btnAssignAction" onclick="autoAssign()">循序自動分配</button>
-                    <button class="btn-copy-group" onclick="copyForGroup()">複製轉貼格式</button>
+                    <button class="btn-copy-group" id="btnCopyFormat" onclick="copyForGroup(this)">複製轉貼格式</button>
                 </div>
                 <button class="btn-share" id="btnShare" onclick="shareDistribution()">📤 產生專屬網址並分享</button>
             </div>
 
-            <!-- 區塊 3：臨時增加座標 -->
             <div class="glass-panel admin-group" id="section3">
                 <label>📝 3. 臨時增加座標 (GPX / 手動)</label>
                 <input type="file" id="gpxFile" accept=".gpx" style="display:none;" onchange="importGPX(this)">
@@ -189,7 +168,6 @@
             </div>
         </div>
 
-        <!-- 右欄：表格 -->
         <div class="right-panel glass-panel" id="tableWrapper">
             <div class="table-container">
                 <table id="coordTable">
@@ -206,18 +184,15 @@
                 </table>
             </div>
         </div>
-        
-    </div> <!-- 結束雙欄網格 -->
+    </div> 
 
-    <!-- 下方：全寬度地圖 -->
+    <!-- 下方地圖 -->
     <div id="map" class="glass-panel" style="padding:5px;"></div>
-
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    // 您的 Google Apps Script 網址
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbwsK-lx5gaX_1rvEGfqqUXaWTMQ8YStZuEEqTU1gNNO2pVuw9zYhI840t7HvlgzOQaHzw/exec"; 
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbx8BrbSuxO-qg3nrMXA-UM2AKioOmlDwFJvfhxPyImhOncIuohhdkwHniZ9d10p3nSShg/exec"; 
     
     const defaultDatabase = {
         "日本東京立川市24": ["35.738976,139.363113", "35.738775,139.36222", "35.739432,139.361339", "35.74103,139.361386", "35.741353,139.361416", "35.741425,139.362769", "35.742282,139.362017", "35.742406,139.363096", "35.741954,139.363753", "35.742374,139.364277", "35.743207,139.365113", "35.744917,139.365552", "35.745506,139.367725", "35.746043,139.36899", "35.741353,139.368559", "35.739983,139.369169", "35.740995,139.366238", "35.74107,139.364442", "35.740451,139.363688", "35.739481,139.364209", "35.739038,139.364704", "35.737899,139.365006", "35.737174,139.367147", "35.736567,139.36356"],
@@ -228,22 +203,20 @@
         "日本福生24": ["35.745167,139.34205", "35.745041,139.340578", "35.744407,139.339785", "35.744318,139.34101", "35.744395,139.342448", "35.743012,139.339143", "35.742978,139.34143", "35.742133,139.340475", "35.741617,139.341011", "35.74094,139.340946", "35.742625,139.343556", "35.742547,139.34434", "35.740053,139.341648", "35.738599,139.340096", "35.737132,139.340718", "35.737774,139.341109", "35.738459,139.342224", "35.737755,139.34314", "35.737515,139.34465", "35.737336,139.346845", "35.735833,139.344333", "35.734962,139.344647", "35.740183,139.344742", "35.739723,139.345764"]
     };
 
-    let database = {}, currentAssignMap = {}, memberColorMap = {}; 
+    let database = {}, dbExpireTimes = {}; 
+    let localOnlyKeys = new Set(); 
+    let currentAssignMap = {}, memberColorMap = {}; 
     let map, markersLayer = L.layerGroup(), lastGpxName = "臨時區域";
-    let isCollabMode = false, collabCode = "", collabPassword = "", collabData = {};
+    let isCollabMode = false, collabCode = "", collabRequiresPassword = false, collabPassword = "", collabData = {};
     let isUIReadOnly = false; 
     
-    // 螢光系色盤 (適合深色底)
     const colorPalette = ['#4ade80', '#60a5fa', '#f472b6', '#c084fc', '#fbbf24', '#38bdf8', '#fb7185', '#a7f3d0', '#fef08a', '#e879f9'];
 
     async function init() {
         map = L.map('map').setView([0, 0], 2);
-        
-        // 更換為 CartoDB Dark Matter 深色科技感地圖
         L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OSM</a> &copy; <a href="https://carto.com/attributions">CARTO</a>'
         }).addTo(map);
-        
         markersLayer.addTo(map);
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -273,13 +246,21 @@
                 database[collabData.fieldName] = collabData.coords;
                 currentAssignMap = collabData.assignMap || {};
                 memberColorMap = collabData.colorMap || {};
+                collabRequiresPassword = json.hasPassword; 
                 
+                // 設定失效時間字串
+                if (json.expireTime) {
+                    let d = new Date(json.expireTime);
+                    let dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
+                    document.getElementById('expireTimeDisplay').innerText = `此頁面於 ${dateStr} 失效`;
+                }
+
                 let sel = document.getElementById('fieldSelector');
                 sel.innerHTML = `<option value="${collabData.fieldName}">${collabData.fieldName}</option>`;
                 document.getElementById('batchMemberInput').value = collabData.memberInput || "";
                 renderHistory(json.history);
                 
-                if (json.hasPassword) {
+                if (collabRequiresPassword) {
                     alert("此任務受密碼保護，目前為唯讀模式 (可正常複製)。");
                 } else {
                     document.getElementById('btnUnlock').style.display = 'none';
@@ -293,7 +274,6 @@
         } catch(e) { alert("連線錯誤"); }
     }
 
-    // 鎖定輸入欄位與分配，開放複製
     function setUIRestriction(locked) {
         isUIReadOnly = locked;
         document.getElementById('batchMemberInput').disabled = locked;
@@ -313,8 +293,14 @@
     }
 
     async function saveSharedTask() {
-        let nickname = prompt("請輸入您的暱稱 (將記錄在歷程中)：");
+        let nickname = prompt("請輸入您的暱稱 (必填，將記錄在歷程中)：");
         if (!nickname) return alert("必須輸入暱稱才能儲存變更！");
+
+        if (collabRequiresPassword) {
+            let pwd = prompt("請輸入修改密碼：");
+            if (pwd === null) return; 
+            collabPassword = pwd;
+        }
 
         const fieldName = document.getElementById('fieldSelector').value;
         const checks = Array.from(document.querySelectorAll('.row-check')).map(c => c.checked);
@@ -343,7 +329,7 @@
         let nickname = prompt("請輸入您的暱稱 (建立者)：");
         if (!nickname) return;
         
-        let pwd = prompt("請設定修改密碼 (若留空則任何人皆可編輯，但均能自由複製)：");
+        let pwd = prompt("請設定修改密碼 (若留空則任何人皆可直接編輯，但均能自由複製)：");
         let newCode = Math.floor(100000 + Math.random() * 900000).toString();
         const checks = Array.from(document.querySelectorAll('.row-check')).map(c => c.checked);
 
@@ -366,20 +352,42 @@
         box.innerHTML = historyArray.slice().reverse().map(h => `<div>${h}</div>`).join('');
     }
 
-    // --- 一般模式載入 ---
+    // --- 一般模式載入與下拉選單更新 ---
     async function loadNormalDatabase() {
+        database = Object.assign({}, defaultDatabase);
         try {
             let res = await fetch(GAS_URL);
             let cloudData = await res.json();
-            database = Object.assign({}, defaultDatabase, cloudData);
+            for(let key in cloudData) {
+                database[key] = cloudData[key].coords;
+                dbExpireTimes[key] = cloudData[key].expireTime;
+            }
             document.getElementById('dbStatusLabel').innerText = "📍 1. 選擇花田 (☁️雲端同步成功)";
         } catch(e) { 
-            database = Object.assign({}, defaultDatabase);
             document.getElementById('dbStatusLabel').innerText = "📍 1. 選擇花田 (⚠️無法連線雲端，僅預設)"; 
         }
-        
-        let sel = document.getElementById('fieldSelector'); sel.innerHTML = "";
-        for (let name in database) sel.innerHTML += `<option value="${name}">${name}</option>`;
+        populateSelector();
+    }
+
+    function populateSelector() {
+        let sel = document.getElementById('fieldSelector');
+        let currentVal = sel.value;
+        sel.innerHTML = "";
+        let now = new Date().getTime();
+
+        for (let name in database) {
+            let suffix = "";
+            if (localOnlyKeys.has(name)) {
+                suffix = " (僅本次暫存)";
+            } else if (dbExpireTimes[name] && dbExpireTimes[name] > now) {
+                let diffMs = dbExpireTimes[name] - now;
+                let hrs = Math.floor(diffMs / (1000 * 60 * 60));
+                let mins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+                suffix = ` (剩餘${hrs}小時${mins}分鐘)`;
+            }
+            sel.innerHTML += `<option value="${name}">${name}${suffix}</option>`;
+        }
+        if(database[currentVal]) sel.value = currentVal;
         if(Object.keys(database).length > 0) resetAndRender();
     }
 
@@ -395,23 +403,68 @@
         if (mode === 'perm' && pwd !== "1234") return alert("❌ 密碼錯誤！");
 
         database[customName] = lines;
-        let sel = document.getElementById('fieldSelector');
-        sel.innerHTML += `<option value="${customName}">${customName}</option>`;
-        sel.value = customName;
-        resetAndRender();
-
-        if (mode !== 'local') {
+        
+        if (mode === 'local') {
+            localOnlyKeys.add(customName);
+            alert(`✅ 成功載入 ${lines.length} 個座標於本地網頁`);
+            populateSelector();
+            document.getElementById('fieldSelector').value = customName;
+            resetAndRender();
+        } else {
             try {
                 let payload = { action: "save", name: customName, coords: lines, type: mode, password: pwd };
                 let res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
                 let result = await res.json();
-                if (result.status === "success") alert(`✅ 成功上傳至雲端！`);
-                else alert(`❌ 雲端儲存失敗：${result.message}`);
-            } catch(e) { alert("❌ 連線失敗！已在本地端暫存。"); }
-        } else { alert(`✅ 成功載入 ${lines.length} 個座標於本地網頁`); }
+                if (result.status === "success") {
+                    if (mode === 'temp') dbExpireTimes[customName] = new Date().getTime() + (30 * 60 * 60 * 1000);
+                    alert(`✅ 成功上傳至雲端！\n模式：${mode === 'perm' ? '永久' : '30小時暫存'}`);
+                } else { 
+                    alert(`❌ 雲端儲存失敗：${result.message}`);
+                    localOnlyKeys.add(customName); 
+                }
+            } catch(e) { 
+                alert("❌ 連線失敗！已在本地端暫存。"); 
+                localOnlyKeys.add(customName);
+            }
+            populateSelector();
+            document.getElementById('fieldSelector').value = customName;
+            resetAndRender();
+        }
     }
 
-    // --- 循序分配 (不看距離) ---
+    // --- 複製文字並改變按鈕狀態 ---
+    function copyC(t, btn) { 
+        navigator.clipboard.writeText(t.replace(/\s/g, "")); 
+        if (btn) {
+            btn.innerText = "已複製";
+            btn.classList.add("copied");
+        }
+    }
+
+    function copyForGroup(btn) {
+        const n = document.getElementById('fieldSelector').value, c = database[n], g = {}, u = [], chk = document.querySelectorAll('.row-check'), order = [];
+        const assignedIndices = Object.keys(currentAssignMap).sort((a,b) => {
+             const names = document.getElementById('batchMemberInput').value.split('\n').map(l => l.trim().split(/\s+/)[1]);
+             return names.indexOf(currentAssignMap[a]) - names.indexOf(currentAssignMap[b]);
+        });
+        assignedIndices.forEach(idx => {
+            const m = currentAssignMap[idx], cl = c[idx].replace(/\s/g, "");
+            if (!g[m]) { g[m] = []; order.push(m); } g[m].push(cl);
+        });
+        c.forEach((v, i) => { if (chk[i].checked && !currentAssignMap[i]) u.push(v.replace(/\s/g, "")); });
+        let res = `📍 ${n} 分配名單\n\n`;
+        order.forEach(nm => res += `+${g[nm].length} ${nm}\n${g[nm].join('\n')}\n\n`);
+        if (u.length > 0) res += `未分配座標(可依序認領)\n${u.join('\n')}`;
+        
+        navigator.clipboard.writeText(res.trim()).then(() => {
+            if (btn) {
+                btn.innerText = "已複製格式";
+                btn.classList.add("copied");
+            }
+        });
+    }
+
+    // --- 分配邏輯 ---
     function autoAssign() {
         updateStats();
         const checks = document.querySelectorAll('.row-check');
@@ -432,7 +485,11 @@
                 if (poolPointer < pool.length) { currentAssignMap[pool[poolPointer]] = r.name; poolPointer++; }
             }
         });
-        renderTable(); alert("✅ 循序分配完成！");
+        
+        const copyFmtBtn = document.getElementById('btnCopyFormat');
+        if(copyFmtBtn) { copyFmtBtn.innerText = "複製轉貼格式"; copyFmtBtn.classList.remove("copied"); }
+
+        renderTable(); 
     }
 
     function renderTable(forcedChecks = null, keepCurrentChecks = false) {
@@ -456,7 +513,7 @@
             tr.innerHTML = `
                 <td class="check-col"><input type="checkbox" class="row-check" ${isChecked ? 'checked' : ''} ${isUIReadOnly ? 'disabled' : ''} onchange="renderTable(); updateStats();"></td>
                 <td class="no-col">${i + 1}</td>
-                <td><button class="copy-btn" onclick="copyC('${coord}')">複製</button></td>
+                <td><button class="copy-btn" onclick="copyC('${coord}', this)">複製</button></td>
                 <td class="member-col">${mName ? `<span class="assigned-name" style="background:${color}">${mName}</span>` : `<span style="color:var(--text-muted);font-size:12px;">未分配</span>`}</td>
                 <td style="font-family:monospace;font-size:12px;color:var(--accent);">${coord}</td>
             `;
@@ -475,25 +532,13 @@
         return { demand: d, available: a };
     }
 
-    function copyForGroup() {
-        const n = document.getElementById('fieldSelector').value, c = database[n], g = {}, u = [], chk = document.querySelectorAll('.row-check'), order = [];
-        const assignedIndices = Object.keys(currentAssignMap).sort((a,b) => {
-             const names = document.getElementById('batchMemberInput').value.split('\n').map(l => l.trim().split(/\s+/)[1]);
-             return names.indexOf(currentAssignMap[a]) - names.indexOf(currentAssignMap[b]);
-        });
-        assignedIndices.forEach(idx => {
-            const m = currentAssignMap[idx], cl = c[idx].replace(/\s/g, "");
-            if (!g[m]) { g[m] = []; order.push(m); } g[m].push(cl);
-        });
-        c.forEach((v, i) => { if (chk[i].checked && !currentAssignMap[i]) u.push(v.replace(/\s/g, "")); });
-        let res = `📍 ${n} 分配名單\n\n`;
-        order.forEach(nm => res += `+${g[nm].length} ${nm}\n${g[nm].join('\n')}\n\n`);
-        if (u.length > 0) res += `未分配座標(可依序認領)\n${u.join('\n')}`;
-        navigator.clipboard.writeText(res.trim()).then(() => alert("分配格式已複製！"));
+    function resetAndRender() { 
+        currentAssignMap = {}; memberColorMap = {}; 
+        const copyFmtBtn = document.getElementById('btnCopyFormat');
+        if(copyFmtBtn) { copyFmtBtn.innerText = "複製轉貼格式"; copyFmtBtn.classList.remove("copied"); }
+        renderTable(); updateStats(); 
     }
-
-    function copyC(t) { navigator.clipboard.writeText(t.replace(/\s/g, "")); alert(`座標已複製！`); }
-    function resetAndRender() { currentAssignMap = {}; memberColorMap = {}; renderTable(); updateStats(); }
+    
     function toggleAllChecks(s) { if(isUIReadOnly) return; document.querySelectorAll('.row-check').forEach(c => c.checked = s); renderTable(); updateStats(); }
     function togglePwd() { document.getElementById('permPwd').style.display = (document.querySelector('input[name="saveMode"]:checked').value === 'perm') ? 'block' : 'none'; }
     
