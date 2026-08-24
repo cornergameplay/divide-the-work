@@ -105,11 +105,9 @@
         #map { height: 500px; width: 100%; border-radius: 12px; z-index: 1; margin-top: 10px;}
         .map-number-icon { color: #000; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; font-size: 12px; font-weight: bold; box-shadow: 0 0 10px rgba(255,255,255,0.3); border: 2px solid rgba(255,255,255,0.8); }
 
-        /* 手機版響應式滿版 */
         @media (max-width: 950px) { 
             .layout-grid { grid-template-columns: 1fr; } 
             .table-container { margin-top: 0; }
-            /* 確保表單寬度佔滿 */
             #section2, textarea { width: 100%; max-width: 100%; }
         }
     </style>
@@ -118,7 +116,6 @@
 <div class="container">
     <h2>強開團座標分配工具</h2>
     
-    <!-- 協作模式專用頂部 -->
     <div id="collabHeader" class="glass-panel" style="margin-bottom: 20px;">
         <h3 style="margin:0 0 5px 0; color:var(--warning);">🔗 共享任務模式 (代碼：<span id="displayCode"></span>)</h3>
         <div id="expireTimeDisplay" style="font-size: 13px; color: var(--danger); margin-bottom: 12px;"></div>
@@ -129,7 +126,6 @@
         <div class="history-box" id="historyLog">讀取中...</div>
     </div>
 
-    <!-- 左右雙欄網格 -->
     <div class="layout-grid">
         <div class="left-panel">
             <div class="glass-panel admin-group" id="section1">
@@ -186,13 +182,13 @@
         </div>
     </div> 
 
-    <!-- 下方地圖 -->
     <div id="map" class="glass-panel" style="padding:5px;"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-    const GAS_URL = "https://script.google.com/macros/s/AKfycbx8BrbSuxO-qg3nrMXA-UM2AKioOmlDwFJvfhxPyImhOncIuohhdkwHniZ9d10p3nSShg/exec"; 
+    // 使用最新無痛版的 Google Apps Script 網址
+    const GAS_URL = "https://script.google.com/macros/s/AKfycbxQsGBlN7_v2F8UWE1z3QFtymyfDuqGmBttKGUN3hCApUp9B2iZiY_CLuLwtxDBIN5--Q/exec"; 
     
     const defaultDatabase = {
         "日本東京立川市24": ["35.738976,139.363113", "35.738775,139.36222", "35.739432,139.361339", "35.74103,139.361386", "35.741353,139.361416", "35.741425,139.362769", "35.742282,139.362017", "35.742406,139.363096", "35.741954,139.363753", "35.742374,139.364277", "35.743207,139.365113", "35.744917,139.365552", "35.745506,139.367725", "35.746043,139.36899", "35.741353,139.368559", "35.739983,139.369169", "35.740995,139.366238", "35.74107,139.364442", "35.740451,139.363688", "35.739481,139.364209", "35.739038,139.364704", "35.737899,139.365006", "35.737174,139.367147", "35.736567,139.36356"],
@@ -235,12 +231,26 @@
         }
     }
 
+    async function safeFetch(url, options = {}) {
+        let fetchOptions = { ...options, redirect: 'follow' };
+        if (options.method === 'POST') {
+            fetchOptions.headers = { "Content-Type": "text/plain;charset=utf-8" };
+        }
+        return await fetch(url, fetchOptions);
+    }
+
     // --- 協作模式邏輯 ---
     async function loadSharedTask(code) {
         setUIRestriction(true); 
         try {
-            let res = await fetch(`${GAS_URL}?action=getTask&code=${code}`);
-            let json = await res.json();
+            let res = await safeFetch(`${GAS_URL}?action=getTask&code=${code}`, { method: 'GET' });
+            let text = await res.text();
+            let json;
+            try { json = JSON.parse(text); } catch(err) {
+                console.error("解析失敗，回傳內容：", text);
+                return alert("⚠️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
+            }
+            
             if (json.status === "success") {
                 collabData = json.data;
                 database[collabData.fieldName] = collabData.coords;
@@ -248,7 +258,6 @@
                 memberColorMap = collabData.colorMap || {};
                 collabRequiresPassword = json.hasPassword; 
                 
-                // 設定失效時間字串
                 if (json.expireTime) {
                     let d = new Date(json.expireTime);
                     let dateStr = `${d.getFullYear()}/${(d.getMonth()+1).toString().padStart(2,'0')}/${d.getDate().toString().padStart(2,'0')} ${d.getHours().toString().padStart(2,'0')}:${d.getMinutes().toString().padStart(2,'0')}`;
@@ -271,7 +280,7 @@
                 renderTable(collabData.checkedStates);
                 updateStats();
             } else { alert("❌ 任務不存在或已過期！"); }
-        } catch(e) { alert("連線錯誤"); }
+        } catch(e) { console.error(e); alert("連線錯誤或權限不足"); }
     }
 
     function setUIRestriction(locked) {
@@ -312,13 +321,20 @@
 
         try {
             document.getElementById('btnSaveSync').innerText = "☁️ 儲存中...";
-            let res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-            let json = await res.json();
+            let res = await safeFetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+            let text = await res.text();
+            let json;
+            try { json = JSON.parse(text); } catch(err) {
+                console.error("解析失敗，回傳內容：", text);
+                document.getElementById('btnSaveSync').innerText = "💾 儲存變更並同步";
+                return alert("⚠️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
+            }
+            
             if (json.status === "success") {
                 renderHistory(json.history);
                 alert("✅ 變更已成功同步至雲端！");
             } else { alert("❌ 儲存失敗：" + json.message); }
-        } catch(e) { alert("連線失敗"); }
+        } catch(e) { console.error(e); alert("連線失敗"); }
         finally { document.getElementById('btnSaveSync').innerText = "💾 儲存變更並同步"; }
     }
 
@@ -340,11 +356,18 @@
 
         try {
             document.getElementById('btnShare').innerText = "☁️ 產生連結中...";
-            let res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-            let json = await res.json();
+            let res = await safeFetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+            let text = await res.text();
+            let json;
+            try { json = JSON.parse(text); } catch(err) {
+                console.error("解析失敗，回傳內容：", text);
+                document.getElementById('btnShare').innerText = "📤 產生專屬網址並分享";
+                return alert("⚠️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
+            }
+            
             if (json.status === "success") { window.location.href = window.location.pathname + "?code=" + newCode; } 
             else { alert("發生錯誤"); }
-        } catch(e) { alert("連線錯誤"); document.getElementById('btnShare').innerText = "📤 產生專屬網址並分享"; }
+        } catch(e) { console.error(e); alert("連線錯誤"); document.getElementById('btnShare').innerText = "📤 產生專屬網址並分享"; }
     }
 
     function renderHistory(historyArray) {
@@ -356,14 +379,25 @@
     async function loadNormalDatabase() {
         database = Object.assign({}, defaultDatabase);
         try {
-            let res = await fetch(GAS_URL);
-            let cloudData = await res.json();
+            let res = await safeFetch(GAS_URL, { method: 'GET' });
+            let text = await res.text();
+            let cloudData;
+            try {
+                cloudData = JSON.parse(text);
+            } catch (err) {
+                console.error("解析失敗，後端回傳內容為：\n", text);
+                document.getElementById('dbStatusLabel').innerText = "📍 1. 選擇花田 (⚠️解析錯誤，請看F12)";
+                populateSelector();
+                return;
+            }
+
             for(let key in cloudData) {
                 database[key] = cloudData[key].coords;
                 dbExpireTimes[key] = cloudData[key].expireTime;
             }
             document.getElementById('dbStatusLabel').innerText = "📍 1. 選擇花田 (☁️雲端同步成功)";
         } catch(e) { 
+            console.error("網路連線錯誤：", e);
             document.getElementById('dbStatusLabel').innerText = "📍 1. 選擇花田 (⚠️無法連線雲端，僅預設)"; 
         }
         populateSelector();
@@ -413,8 +447,18 @@
         } else {
             try {
                 let payload = { action: "save", name: customName, coords: lines, type: mode, password: pwd };
-                let res = await fetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
-                let result = await res.json();
+                let res = await safeFetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
+                let text = await res.text();
+                let result;
+                try { result = JSON.parse(text); } catch (err) {
+                    console.error("解析失敗，回傳內容：", text);
+                    localOnlyKeys.add(customName);
+                    populateSelector();
+                    document.getElementById('fieldSelector').value = customName;
+                    resetAndRender();
+                    return alert("⚠️ 雲端儲存失敗：後端回傳格式異常，已改為本地暫存 (詳見F12)");
+                }
+                
                 if (result.status === "success") {
                     if (mode === 'temp') dbExpireTimes[customName] = new Date().getTime() + (30 * 60 * 60 * 1000);
                     alert(`✅ 成功上傳至雲端！\n模式：${mode === 'perm' ? '永久' : '30小時暫存'}`);
@@ -423,6 +467,7 @@
                     localOnlyKeys.add(customName); 
                 }
             } catch(e) { 
+                console.error(e);
                 alert("❌ 連線失敗！已在本地端暫存。"); 
                 localOnlyKeys.add(customName);
             }
@@ -432,7 +477,6 @@
         }
     }
 
-    // --- 複製文字並改變按鈕狀態 ---
     function copyC(t, btn) { 
         navigator.clipboard.writeText(t.replace(/\s/g, "")); 
         if (btn) {
@@ -464,7 +508,6 @@
         });
     }
 
-    // --- 分配邏輯 ---
     function autoAssign() {
         updateStats();
         const checks = document.querySelectorAll('.row-check');
