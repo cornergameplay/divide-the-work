@@ -110,16 +110,39 @@
         .copy-btn.copied { background: var(--primary); color: #000; border-color: var(--primary); }
 
         #collabHeader { display: none; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--warning); text-align: center; }
+        
+        /* ==== 共享區塊的按鈕排版 ==== */
+        /* 電腦版：強制置中且一模一樣的 160px 大小 */
+        #collabActions { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; }
+        #collabActions button { 
+            flex: 0 0 auto !important; /* 拒絕自動延展 */
+            width: 160px !important;   /* 強制鎖定寬度 */
+            margin-top: 0 !important;
+            padding: 12px 0 !important; 
+            text-align: center;
+        }
+        
         .history-box { font-size: 12px; color: var(--text-muted); background: rgba(0,0,0,0.3); padding: 10px; border-radius: 6px; height: 60px; overflow-y: auto; text-align: left; margin-top: 10px; border: 1px solid var(--glass-border); }
         
         #map { height: 500px; width: 100%; border-radius: 12px; z-index: 1; margin-top: 10px;}
         .map-number-icon { color: #000; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; font-size: 12px; font-weight: bold; box-shadow: 0 0 10px rgba(255,255,255,0.3); border: 2px solid rgba(255,255,255,0.8); }
 
+        /* ==== 手機版響應式滿版與按鈕 50% 排版 ==== */
         @media (max-width: 950px) { 
             body { padding: 10px; }
             .layout-grid { grid-template-columns: 1fr; gap: 10px; } 
             .glass-panel { padding: 15px; }
             .table-container { margin-top: 0; }
+            
+            /* 手機版：解除 160px 限制，改為彈性均分 50% 防裁切 */
+            #collabActions { gap: 10px; }
+            #collabActions button { 
+                flex: 1 1 0% !important; 
+                width: 100% !important; 
+                min-width: 0 !important;
+                padding: 12px 5px !important; 
+                font-size: 14px; 
+            }
         }
     </style>
 </head>
@@ -130,10 +153,13 @@
     <div id="collabHeader" class="glass-panel" style="margin-bottom: 20px;">
         <h3 id="collabHeaderTitle" style="margin:0 0 5px 0; color:var(--warning);">🔗 共享任務模式 (代碼：<span id="displayCode"></span>)</h3>
         <div id="expireTimeDisplay" style="font-size: 13px; color: var(--danger); margin-bottom: 12px;"></div>
+        
         <div id="collabActions">
-            <button id="btnUnlock" onclick="unlockTask()" class="btn-danger" style="width: auto; padding: 10px 25px; margin-top:0;">🔒 輸入密碼解鎖編輯</button>
-            <button id="btnSaveSync" onclick="saveSharedTask()" style="display:none; background:var(--primary); color:#000; padding:10px 25px;">💾 儲存變更並同步</button>
+            <button id="btnUnlock" onclick="unlockTask()" class="btn-danger">🔒 解鎖編輯</button>
+            <button id="btnSaveSync" onclick="saveSharedTask()" style="display:none; background:var(--primary); color:#000;">💾 儲存變更</button>
+            <button id="btnCopyShareText" onclick="copyCollabShareText(this)" class="btn-utility">📋 分享連結</button>
         </div>
+        
         <div class="history-box" id="historyLog">讀取中...</div>
     </div>
 
@@ -222,7 +248,6 @@
         const urlParams = new URLSearchParams(window.location.search);
         collabCode = urlParams.get('code');
 
-        // ==== 安全防護：如果是沒有 code 的主網頁，檢查管理者密碼 ====
         if (!collabCode) {
             let isAuth = sessionStorage.getItem('adminAuth');
             if (isAuth !== 'true') {
@@ -231,12 +256,11 @@
                     sessionStorage.setItem('adminAuth', 'true');
                 } else {
                     document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px; color:var(--danger);'>⛔ 拒絕存取</h2><p style='text-align:center; color:var(--text-muted);'>密碼錯誤或已取消。</p>";
-                    return; // 停止執行後續程式碼
+                    return; 
                 }
             }
         }
 
-        // 顯示主容器
         document.getElementById('mainContainer').style.display = 'block';
 
         map = L.map('map').setView([0, 0], 2);
@@ -322,6 +346,31 @@
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
+    // ==== 複製分享連結 (共享頁面) ====
+    function copyCollabShareText(btn) {
+        let link = window.location.href;
+        let flower = collabData.flowerType;
+        let shareText = "";
+        
+        if (flower && flower.trim() !== "") {
+            shareText = `🌸 強開團分配任務 - ${flower.trim()}\n🔗 點此進入認領：${link}`;
+        } else {
+            shareText = `🌸 強開團分配任務\n🔗 點此進入認領：${link}`;
+        }
+
+        navigator.clipboard.writeText(shareText).then(() => {
+            let originalText = btn.innerText;
+            btn.innerText = "✅ 已複製！";
+            btn.classList.add("copied");
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.remove("copied");
+            }, 2000);
+        }).catch(err => {
+            alert("瀏覽器不支援自動複製，請手手動複製上方網址。");
+        });
+    }
+
     function setUIRestriction(locked) {
         isUIReadOnly = locked;
         document.getElementById('batchMemberInput').disabled = locked;
@@ -373,7 +422,7 @@
             let json;
             try { json = JSON.parse(text); } catch(err) {
                 console.error("解析失敗，回傳內容：", text);
-                document.getElementById('btnSaveSync').innerText = "💾 儲存變更並同步";
+                document.getElementById('btnSaveSync').innerText = "💾 儲存變更";
                 return alert("⚠️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
             }
             
@@ -382,7 +431,7 @@
                 alert("✅ 變更已成功同步至雲端！");
             } else { alert("❌ 儲存失敗：" + json.message); }
         } catch(e) { console.error(e); alert("連線失敗"); }
-        finally { document.getElementById('btnSaveSync').innerText = "💾 儲存變更並同步"; }
+        finally { document.getElementById('btnSaveSync').innerText = "💾 儲存變更"; }
     }
 
     async function shareDistribution() {
@@ -423,9 +472,32 @@
                 return alert("⚠️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
             }
             
-            if (json.status === "success") { window.location.href = window.location.pathname + "?code=" + newCode; } 
-            else { alert("發生錯誤"); }
-        } catch(e) { console.error(e); alert("連線錯誤"); document.getElementById('btnShare').innerText = "📤 產生專屬網址並分享"; }
+            if (json.status === "success") { 
+                // ==== 建立成功時自動複製分享文案 ====
+                let fullUrl = window.location.origin + window.location.pathname + "?code=" + newCode;
+                let shareText = "";
+                if (flowerType && flowerType.trim() !== "") {
+                    shareText = `🌸 強開團分配任務 - ${flowerType.trim()}\n🔗 點此進入認領：${fullUrl}`;
+                } else {
+                    shareText = `🌸 強開團分配任務\n🔗 點此進入認領：${fullUrl}`;
+                }
+                
+                navigator.clipboard.writeText(shareText).then(() => {
+                    alert("✅ 分享任務已建立！\n系統已自動將「分享網址與文案」複製到您的剪貼簿，請直接去 LINE 貼上即可。");
+                    window.location.href = fullUrl;
+                }).catch(() => {
+                    alert("✅ 分享任務已建立！(自動複製失敗，進入頁面後可手動點擊複製按鈕)");
+                    window.location.href = fullUrl;
+                });
+            } else { 
+                alert("發生錯誤"); 
+                document.getElementById('btnShare').innerText = "📤 產生專屬網址並分享";
+            }
+        } catch(e) { 
+            console.error(e); 
+            alert("連線錯誤"); 
+            document.getElementById('btnShare').innerText = "📤 產生專屬網址並分享"; 
+        }
     }
 
     function renderHistory(historyArray) {
