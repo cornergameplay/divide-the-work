@@ -115,8 +115,8 @@
         /* 電腦版：強制置中且一模一樣的 160px 大小 */
         #collabActions { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; }
         #collabActions button { 
-            flex: 0 0 auto !important; /* 拒絕自動延展 */
-            width: 160px !important;   /* 強制鎖定寬度 */
+            flex: 0 0 auto !important; 
+            width: 160px !important;   
             margin-top: 0 !important;
             padding: 12px 0 !important; 
             text-align: center;
@@ -126,6 +126,15 @@
         
         #map { height: 500px; width: 100%; border-radius: 12px; z-index: 1; margin-top: 10px;}
         .map-number-icon { color: #000; border-radius: 50%; width: 24px; height: 24px; line-height: 24px; text-align: center; font-size: 12px; font-weight: bold; box-shadow: 0 0 10px rgba(255,255,255,0.3); border: 2px solid rgba(255,255,255,0.8); }
+
+        /* ==== 登入介面專屬樣式 ==== */
+        #loginOverlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: var(--bg-gradient);
+            z-index: 9999;
+            display: flex; justify-content: center; align-items: center; padding: 20px;
+        }
+        .login-box { width: 100%; max-width: 400px; text-align: center; }
 
         /* ==== 手機版響應式滿版與按鈕 50% 排版 ==== */
         @media (max-width: 950px) { 
@@ -147,6 +156,21 @@
     </style>
 </head>
 <body>
+
+<!-- ==== 全新網頁版登入介面 ==== -->
+<div id="loginOverlay" style="display:none;">
+    <div class="glass-panel login-box">
+        <h2 style="margin-top: 0;">🔒 系統登入</h2>
+        <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">請輸入發起人管理密碼以進入系統</p>
+        
+        <!-- 使用 type="text" 確保手機中文輸入法(IME)完全正常運作 -->
+        <input type="text" id="adminPwdInput" placeholder="請輸入密碼 (支援中文)" style="margin-bottom: 15px; text-align: center; font-size: 16px;">
+        
+        <button class="btn-assign" onclick="verifyAdmin()" style="width: 100%;">確認登入</button>
+        <div id="loginError" style="color: var(--danger); font-size: 13px; margin-top: 15px; display: none;">⛔ 密碼錯誤，請重新輸入</div>
+    </div>
+</div>
+
 <div class="container" id="mainContainer" style="display:none;">
     <h2>強開團座標分配工具</h2>
     
@@ -251,16 +275,35 @@
         if (!collabCode) {
             let isAuth = sessionStorage.getItem('adminAuth');
             if (isAuth !== 'true') {
-                let pwd = prompt("請輸入發起人管理密碼：");
-                if (pwd === "adminccfh") {
-                    sessionStorage.setItem('adminAuth', 'true');
-                } else {
-                    document.body.innerHTML = "<h2 style='text-align:center; margin-top:50px; color:var(--danger);'>⛔ 拒絕存取</h2><p style='text-align:center; color:var(--text-muted);'>密碼錯誤或已取消。</p>";
-                    return; 
-                }
+                // 顯示自訂的登入介面
+                document.getElementById('loginOverlay').style.display = 'flex';
+                
+                // 綁定 Enter 鍵，按 Enter 也可以直接登入
+                document.getElementById('adminPwdInput').addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') verifyAdmin();
+                });
+                return; // 暫停後續初始化，等待登入
             }
         }
+        
+        startApp(); // 開始載入主程式
+    }
 
+    // ==== 驗證自訂登入介面的密碼 ====
+    function verifyAdmin() {
+        let pwd = document.getElementById('adminPwdInput').value.trim();
+        // 支援雙管理員密碼
+        if (pwd === "adminccfh" || pwd === "admin奈米") {
+            sessionStorage.setItem('adminAuth', 'true');
+            document.getElementById('loginOverlay').style.display = 'none';
+            startApp();
+        } else {
+            document.getElementById('loginError').style.display = 'block';
+            document.getElementById('adminPwdInput').value = ""; // 清空錯誤的密碼
+        }
+    }
+
+    async function startApp() {
         document.getElementById('mainContainer').style.display = 'block';
 
         map = L.map('map').setView([0, 0], 2);
@@ -346,7 +389,6 @@
         return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
     }
 
-    // ==== 複製分享連結 (共享頁面) ====
     function copyCollabShareText(btn) {
         let link = window.location.href;
         let flower = collabData.flowerType;
@@ -367,7 +409,7 @@
                 btn.classList.remove("copied");
             }, 2000);
         }).catch(err => {
-            alert("瀏覽器不支援自動複製，請手手動複製上方網址。");
+            alert("瀏覽器不支援自動複製，請手動複製上方網址。");
         });
     }
 
@@ -473,7 +515,6 @@
             }
             
             if (json.status === "success") { 
-                // ==== 建立成功時自動複製分享文案 ====
                 let fullUrl = window.location.origin + window.location.pathname + "?code=" + newCode;
                 let shareText = "";
                 if (flowerType && flowerType.trim() !== "") {
