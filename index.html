@@ -112,7 +112,6 @@
         #collabHeader { display: none; background: rgba(251, 191, 36, 0.1); border: 1px solid var(--warning); text-align: center; }
         
         /* ==== 共享區塊的按鈕排版 ==== */
-        /* 電腦版：強制置中且一模一樣的 160px 大小 */
         #collabActions { display: flex; justify-content: center; gap: 15px; margin-bottom: 10px; }
         #collabActions button { 
             flex: 0 0 auto !important; 
@@ -143,7 +142,6 @@
             .glass-panel { padding: 15px; }
             .table-container { margin-top: 0; }
             
-            /* 手機版：解除 160px 限制，改為彈性均分 50% 防裁切 */
             #collabActions { gap: 10px; }
             #collabActions button { 
                 flex: 1 1 0% !important; 
@@ -163,7 +161,6 @@
         <h2 style="margin-top: 0;">🔒 系統登入</h2>
         <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">請輸入發起人管理密碼以進入系統</p>
         
-        <!-- 使用 type="text" 確保手機中文輸入法(IME)完全正常運作 -->
         <input type="text" id="adminPwdInput" placeholder="請輸入密碼 (支援中文)" style="margin-bottom: 15px; text-align: center; font-size: 16px;">
         
         <button class="btn-assign" onclick="verifyAdmin()" style="width: 100%;">確認登入</button>
@@ -201,7 +198,15 @@
             <div class="glass-panel admin-group" id="section2">
                 <label>👥 2. 分配名單 (數量 名稱)</label>
                 <textarea id="batchMemberInput" placeholder="5 小明&#10;10 阿華" oninput="updateStats()"></textarea>
-                <div id="statsDisplay" style="font-size:13px; margin-top:5px; color:var(--text-muted);">需求: 0 | 可用: 0</div>
+                
+                <!-- 新增：包含分配名單打勾選項與數字統計並排 -->
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-top:5px; margin-bottom: 5px;">
+                    <div id="statsDisplay" style="font-size:13px; color:var(--text-muted);">需求: 0 | 可用: 0</div>
+                    <label style="margin: 0; font-size: 13px; font-weight: normal; color: var(--text-main); cursor: pointer; display: flex; align-items: center; gap: 5px; background: rgba(0,0,0,0.3); padding: 4px 8px; border-radius: 6px; border: 1px solid var(--glass-border);">
+                        <input type="checkbox" id="includeMembersCheck" checked style="width: auto; margin: 0;"> 包含分配名單
+                    </label>
+                </div>
+                
                 <div class="btn-group">
                     <button class="btn-assign" id="btnAssignAction" onclick="autoAssign()">循序自動分配</button>
                     <button class="btn-copy-group" id="btnCopyFormat" onclick="copyForGroup(this)">複製轉貼格式</button>
@@ -275,31 +280,26 @@
         if (!collabCode) {
             let isAuth = sessionStorage.getItem('adminAuth');
             if (isAuth !== 'true') {
-                // 顯示自訂的登入介面
                 document.getElementById('loginOverlay').style.display = 'flex';
-                
-                // 綁定 Enter 鍵，按 Enter 也可以直接登入
                 document.getElementById('adminPwdInput').addEventListener('keypress', function(e) {
                     if (e.key === 'Enter') verifyAdmin();
                 });
-                return; // 暫停後續初始化，等待登入
+                return; 
             }
         }
         
-        startApp(); // 開始載入主程式
+        startApp();
     }
 
-    // ==== 驗證自訂登入介面的密碼 ====
     function verifyAdmin() {
         let pwd = document.getElementById('adminPwdInput').value.trim();
-        // 支援雙管理員密碼
         if (pwd === "adminccfh" || pwd === "admin奈米") {
             sessionStorage.setItem('adminAuth', 'true');
             document.getElementById('loginOverlay').style.display = 'none';
             startApp();
         } else {
             document.getElementById('loginError').style.display = 'block';
-            document.getElementById('adminPwdInput').value = ""; // 清空錯誤的密碼
+            document.getElementById('adminPwdInput').value = ""; 
         }
     }
 
@@ -458,14 +458,14 @@
         };
 
         try {
-            document.getElementById('btnSaveSync').innerText = "☁️ 儲存中...";
+            document.getElementById('btnSaveSync').innerText = "☁️️ 儲存中...";
             let res = await safeFetch(GAS_URL, { method: 'POST', body: JSON.stringify(payload) });
             let text = await res.text();
             let json;
             try { json = JSON.parse(text); } catch(err) {
                 console.error("解析失敗，回傳內容：", text);
                 document.getElementById('btnSaveSync').innerText = "💾 儲存變更";
-                return alert("⚠️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
+                return alert("⚠️️ 系統錯誤：後端回傳格式異常，詳見 F12 Console。");
             }
             
             if (json.status === "success") {
@@ -655,20 +655,43 @@
         }
     }
 
+    // ==== 修改：支援「包含分配名單」與「純座標模式」的複製功能 ====
     function copyForGroup(btn) {
-        const n = document.getElementById('fieldSelector').value, c = database[n], g = {}, u = [], chk = document.querySelectorAll('.row-check'), order = [];
-        const assignedIndices = Object.keys(currentAssignMap).sort((a,b) => {
-             const names = document.getElementById('batchMemberInput').value.split('\n').map(l => l.trim().split(/\s+/)[1]);
-             return names.indexOf(currentAssignMap[a]) - names.indexOf(currentAssignMap[b]);
-        });
-        assignedIndices.forEach(idx => {
-            const m = currentAssignMap[idx], cl = c[idx].replace(/\s/g, "");
-            if (!g[m]) { g[m] = []; order.push(m); } g[m].push(cl);
-        });
-        c.forEach((v, i) => { if (chk[i].checked && !currentAssignMap[i]) u.push(v.replace(/\s/g, "")); });
-        let res = `📍 ${n} 分配名單\n\n`;
-        order.forEach(nm => res += `+${g[nm].length} ${nm}\n${g[nm].join('\n')}\n\n`);
-        if (u.length > 0) res += `未分配座標(可依序認領)\n${u.join('\n')}`;
+        const n = document.getElementById('fieldSelector').value;
+        const c = database[n];
+        const chk = document.querySelectorAll('.row-check');
+        const includeMembers = document.getElementById('includeMembersCheck').checked;
+        
+        let title = `📍 ${n}`;
+        if (isCollabMode && collabData && collabData.flowerType && collabData.flowerType.trim() !== "") {
+            title += ` - ${collabData.flowerType.trim()}`;
+        }
+        
+        let res = "";
+        
+        if (includeMembers) {
+            const g = {}, u = [], order = [];
+            const assignedIndices = Object.keys(currentAssignMap).sort((a,b) => {
+                 const names = document.getElementById('batchMemberInput').value.split('\n').map(l => l.trim().split(/\s+/)[1]);
+                 return names.indexOf(currentAssignMap[a]) - names.indexOf(currentAssignMap[b]);
+            });
+            assignedIndices.forEach(idx => {
+                const m = currentAssignMap[idx], cl = c[idx].replace(/\s/g, "");
+                if (!g[m]) { g[m] = []; order.push(m); } g[m].push(cl);
+            });
+            c.forEach((v, i) => { if (chk[i].checked && !currentAssignMap[i]) u.push(v.replace(/\s/g, "")); });
+            
+            res = `${title} 分配名單\n\n`;
+            order.forEach(nm => res += `+${g[nm].length} ${nm}\n${g[nm].join('\n')}\n\n`);
+            if (u.length > 0) res += `未分配座標(可依序認領)\n${u.join('\n')}`;
+        } else {
+            // 純座標模式
+            let pureCoords = [];
+            c.forEach((v, i) => { 
+                if (chk[i].checked) pureCoords.push(v.replace(/\s/g, "")); 
+            });
+            res = `${title}\n\n${pureCoords.join('\n')}`;
+        }
         
         navigator.clipboard.writeText(res.trim()).then(() => {
             if (btn) {
